@@ -28,13 +28,12 @@ interface ILenderManager {
         uint256 startBlock,
         uint256 amountToPay,
         uint256 indexed key,
-        bytes indexed minerActor
+        address indexed minerActor
     );
 
-    event CheckReputation(
-        uint256 requestId, 
-        string minerActor
-    );
+    event CheckReputation(uint256 requestId, address minerActor);
+
+    event MinerMockAPIDeployed(address contractAddress, address owner);
 
     struct BorrowerOrders {
         address borrower;

@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import "@zondax/filecoin-solidity/contracts/v0.8/MinerAPI.sol";
+import "./mocks/MinerMockAPI.sol";
+import "./ILenderManager.sol";
+import "./Escrow.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/utils/Actor.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/utils/Misc.sol";
-import "./ILenderManager.sol";
-import "./Escrow.sol";
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
+
 // We don't use openzeppelin it has some issues with Hyperspace
 // import "@openzeppelin/contracts/utils/Counters.sol";
 
@@ -17,8 +18,9 @@ contract LenderManager is ILenderManager {
     mapping(uint256 => LendingPosition) public positions;
     mapping(uint256 => BorrowerOrders[]) public ordersForLending;
     mapping(uint256 => address[]) public escrowContracts;
-    mapping(uint256 => bytes) public reputationRequest;
-    mapping(bytes => uint256) public reputationResponse;
+    mapping(uint256 => address) public reputationRequest;
+    mapping(address => uint256) public reputationResponse;
+    mapping(address => address) public ownerToMinerActor;
     uint256[] public loanKeys;
     uint256 public currentId;
     address public oracle;
@@ -41,14 +43,11 @@ contract LenderManager is ILenderManager {
         public
         payable
     {
-        if (msg.value <= 0)
-            revert Empty_Amount();
-        if (block.timestamp >= duration)
-            revert Loan_Period_Excedeed();
-        if (loanInterestRate >= 10000)
-            revert InterestRate_Too_High(10000);
-            
-        // generate "random" key used to manage Lending positions    
+        if (msg.value <= 0) revert Empty_Amount();
+        if (block.timestamp >= duration) revert Loan_Period_Excedeed();
+        if (loanInterestRate >= 10000) revert InterestRate_Too_High(10000);
+
+        // generate pseudo-random key used to manage Lending positions
         uint256 key = uint256(
             keccak256(
                 abi.encodePacked(
@@ -77,18 +76,19 @@ contract LenderManager is ILenderManager {
     function createBorrow(
         uint256 loanKey,
         uint256 amount,
-        bytes memory minerActorAddress
+        address minerActorAddress
     ) public {
-        
-        if (positions[loanKey].lender == address(0))
-            revert Empty_Lender();
+        if (positions[loanKey].lender == address(0)) revert Empty_Lender();
         if (msg.sender == positions[loanKey].lender)
             revert Impossible_Borrower(msg.sender);
-        if (amount > positions[loanKey].availableAmount && block.timestamp > positions[loanKey].endTimestamp)
-            revert Loan_No_More_Available();
-        if(reputationResponse[minerActorAddress] != MINER_REPUTATION_GOOD)
+        if (
+            amount > positions[loanKey].availableAmount ||
+            block.timestamp > positions[loanKey].endTimestamp
+        ) revert Loan_No_More_Available();
+        if (reputationResponse[minerActorAddress] != MINER_REPUTATION_GOOD) {
             revert Miner_Bad_Reputation();
-        if(!isControllingAddress(minerActorAddress))
+        }
+        if (!isControllingAddress(minerActorAddress))
             revert No_Borrower_Permissions();
 
         (uint256 rate, uint256 amountToRepay) = calculateInterest(
@@ -132,35 +132,40 @@ contract LenderManager is ILenderManager {
         );
     }
 
-    function checkReputation(bytes memory minerActorAddress) public {
+    function deployMockMinerActor() public {
+        MinerMockAPI c = new MinerMockAPI(abi.encode(msg.sender));
+        emit MinerMockAPIDeployed(address(c), msg.sender);
+    }
+
+    function checkReputation(address minerActorAddress) public {
         uint256 id = currentId;
         reputationRequest[id] = minerActorAddress;
         incrementId();
-        string memory minerActor = toString(minerActorAddress);
-        emit CheckReputation(id, minerActor);
+        emit CheckReputation(id, minerActorAddress);
     }
 
     function receiveReputationScore(uint256 requestId, uint256 response)
         external
         onlyOracle
     {
-        if(response != MINER_REPUTATION_GOOD || response != MINER_REPUTATION_BAD)
-            revert Miner_Reputation_Value();
-        bytes memory miner = reputationRequest[requestId];
+        if (
+            response != MINER_REPUTATION_GOOD &&
+            response != MINER_REPUTATION_BAD
+        ) revert Miner_Reputation_Value();
+        address miner = reputationRequest[requestId];
         reputationResponse[miner] = response;
     }
 
-    function isControllingAddress(bytes memory minerActorAddress)
+    function isControllingAddress(address minerActorAddress)
         public
         returns (bool)
     {
-        return
-            MinerAPI
-                .isControllingAddress(
-                    minerActorAddress,
-                    abi.encodePacked(msg.sender)
-                )
-                .is_controlling;
+        MinerTypes.IsControllingAddressParam memory params = MinerTypes
+            .IsControllingAddressParam(abi.encode(msg.sender));
+        MinerTypes.IsControllingAddressReturn memory returnValue = MinerMockAPI(
+            minerActorAddress
+        ).isControllingAddress(params);
+        return returnValue.is_controlling;
     }
 
     function calculateInterest(uint256 amount, uint256 bps)
@@ -192,21 +197,5 @@ contract LenderManager is ILenderManager {
 
     function incrementId() private returns (uint256) {
         return currentId += 1;
-    }
-
-    function toString(bytes memory data) internal pure returns (string memory) {
-        return string(abi.encodePacked(toStringRaw(data)));
-    }
-
-    function toStringRaw(bytes memory data)
-        internal
-        pure
-        returns (bytes memory str)
-    {
-        str = new bytes(data.length * 2);
-        for (uint256 i = 0; i < data.length; i++) {
-            str[i * 2] = ALPHABET[uint256(uint8(data[i] >> 4))];
-            str[i * 2 + 1] = ALPHABET[uint256(uint8(data[i] & 0x0f))];
-        }
     }
 }

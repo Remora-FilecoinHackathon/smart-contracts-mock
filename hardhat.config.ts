@@ -6,6 +6,7 @@ dotenv.config();
 
 const PRIVATE_KEY_LENDER = process.env.PRIVATE_KEY_LENDER as string;
 const PRIVATE_KEY_BORROWER = process.env.PRIVATE_KEY_BORROWER as string;
+const ORACLE_PRIVATE_KEY = process.env.ORACLE_PRIVATE_KEY as string;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -22,7 +23,7 @@ const config: HardhatUserConfig = {
     hyperspace: {
       chainId: 3141,
       url: "https://api.hyperspace.node.glif.io/rpc/v1",
-      accounts: [PRIVATE_KEY_LENDER, PRIVATE_KEY_BORROWER],
+      accounts: [PRIVATE_KEY_LENDER, PRIVATE_KEY_BORROWER, ORACLE_PRIVATE_KEY],
       timeout: 4000000,
     },
   },

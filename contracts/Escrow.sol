@@ -5,14 +5,14 @@ pragma solidity ^0.8.17;
 // import "hardhat/console.sol";
 import "./IEscrow.sol";
 import "@zondax/filecoin-solidity/contracts/v0.8/SendAPI.sol";
-import {MinerAPI} from "@zondax/filecoin-solidity/contracts/v0.8/MinerAPI.sol";
+import {MinerMockAPI} from "./mocks/MinerMockAPI.sol";
 import {MinerTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 import {BigIntCBOR} from "@zondax/filecoin-solidity/contracts/v0.8/cbor/BigIntCbor.sol";
 
 contract Escrow is IEscrow {
     address public lender;
     address public borrower;
-    bytes public minerActor;
+    address public minerActor;
     uint256 public loanAmount;
     uint256 public rateAmount;
     uint256 public end;
@@ -26,7 +26,7 @@ contract Escrow is IEscrow {
     constructor(
         address _lender,
         address _borrower,
-        bytes memory _minerActor,
+        address _minerActor,
         uint256 _loanAmount,
         uint256 _rateAmount,
         uint256 _withdrawInterval,
@@ -45,11 +45,9 @@ contract Escrow is IEscrow {
     }
 
     function startLoan() external {
-        if (started)
-            revert Loan_Already_Started();
+        if (started) revert Loan_Already_Started();
         // set this contract as the new Owner of the Miner Actor
-        MinerAPI.changeOwnerAddress(
-            minerActor,
+        MinerMockAPI(minerActor).changeOwnerAddress(
             abi.encodePacked(address(this))
         );
 
@@ -57,48 +55,42 @@ contract Escrow is IEscrow {
         params.new_beneficiary = abi.encodePacked(address(this));
         params.new_quota.val = abi.encodePacked(address(this).balance);
         params.new_expiration = uint64(end - block.timestamp);
-        MinerAPI.changeBeneficiary(minerActor, params);
+        MinerMockAPI(minerActor).changeBeneficiary(params);
 
         // check on Owner
-        MinerTypes.GetOwnerReturn memory getOwnerReturnValue = MinerAPI
-            .getOwner(minerActor);
-        address checkOwner = abi.decode(
-            getOwnerReturnValue.owner, 
-            (address)
-        );
-        if (checkOwner != address(this))
-            revert Wrong_Owner();
+        MinerTypes.GetOwnerReturn memory getOwnerReturnValue = MinerMockAPI(
+            minerActor
+        ).getOwner();
+        address checkOwner = abi.decode(getOwnerReturnValue.owner, (address));
+        if (checkOwner != address(this)) revert Wrong_Owner();
         // check on Beneficiary
         MinerTypes.GetBeneficiaryReturn
-            memory getBeneficiaryReturnValue = MinerAPI.getBeneficiary(
-                minerActor
-            );
+            memory getBeneficiaryReturnValue = MinerMockAPI(minerActor)
+                .getBeneficiary();
         address checkBeneficiary = abi.decode(
             getBeneficiaryReturnValue.active.beneficiary,
             (address)
         );
-        if (checkBeneficiary != address(this))
-            revert Wrong_Beneficiary();
+        if (checkBeneficiary != address(this)) revert Wrong_Beneficiary();
 
         started = true;
+        transferToMinerActor(address(this).balance);
     }
 
-    function transferToMinerActor(uint256 amount) external {
-        if(msg.sender != borrower)
-            revert Not_The_Borrower(borrower);
-        if(address(this).balance <= amount)
+    function transferToMinerActor(uint256 amount) public {
+        if (msg.sender != borrower) revert Not_The_Borrower(borrower);
+        if (address(this).balance <= amount)
             revert Not_Enough_Balance(address(this).balance);
-
-        SendAPI.send(minerActor, amount);
+        submit(minerActor, amount, "");
     }
 
     function transferFromMinerActor(
         MinerTypes.WithdrawBalanceParams memory balanceParams
-    ) external returns (MinerTypes.WithdrawBalanceReturn memory) {
-        if(msg.sender != borrower || msg.sender != lender )
+    ) external {
+        if (msg.sender != borrower || msg.sender != lender)
             revert Not_The_Borrower_Or_Lender(borrower, lender);
 
-        return MinerAPI.withdrawBalance(minerActor, balanceParams);
+        return MinerMockAPI(minerActor).withdrawBalance();
     }
 
     function nextWithdraw() public view returns (uint256) {
@@ -106,13 +98,11 @@ contract Escrow is IEscrow {
     }
 
     function repay() external {
-        if (!started)
-            revert Loan_Not_Started();
-            
-        if(nextWithdraw() > block.timestamp)
-            revert Too_Early(nextWithdraw());
+        if (!started) revert Loan_Not_Started();
 
-        if(loanPaidAmount >= loanAmount)
+        if (nextWithdraw() > block.timestamp) revert Too_Early(nextWithdraw());
+
+        if (loanPaidAmount >= loanAmount)
             revert Loan_Already_Repaid(loanPaidAmount);
 
         if (address(this).balance >= rateAmount) {
@@ -128,10 +118,8 @@ contract Escrow is IEscrow {
     }
 
     function withdrawBeforLoanStarts() external {
-        if(msg.sender != lender)
-            revert Not_The_Lender(lender);
-        if(started)
-            revert Already_Started();
+        if (msg.sender != lender) revert Not_The_Lender(lender);
+        if (started) revert Already_Started();
 
         emit ClosedLoan(block.timestamp, address(this).balance, 0);
         // selfdescruct and send $FIL back to the lender
@@ -140,19 +128,19 @@ contract Escrow is IEscrow {
     }
 
     function closeLoan() external {
-        if(!canTerminate || end > block.timestamp)
+        if (!canTerminate || end > block.timestamp)
             revert Loan_Not_Expired(end);
-        MinerAPI.withdrawBalance(minerActor, closeLoanParam);
+        MinerMockAPI(minerActor).withdrawBalance();
         // change the owner wallet setting the borrower as the new owner
-        MinerAPI.changeOwnerAddress(minerActor, abi.encodePacked(borrower));
+        MinerMockAPI(minerActor).changeOwnerAddress(abi.encodePacked(borrower));
         // change the beneficiary wallet setting the borrower as the new owner
         MinerTypes.ChangeBeneficiaryParams memory params;
         params.new_beneficiary = abi.encodePacked(borrower);
         // 1 $FIL in Wei
-        uint256 quota = 1000000000000000000;
+        uint256 quota = 10**18;
         params.new_quota.val = abi.encodePacked(quota);
         params.new_expiration = uint64(block.timestamp + end);
-        MinerAPI.changeBeneficiary(minerActor, params);
+        MinerMockAPI(minerActor).changeBeneficiary(params);
 
         emit ClosedLoan(block.timestamp, address(this).balance, loanPaidAmount);
         // selfdescruct and send $FIL back to the lender
