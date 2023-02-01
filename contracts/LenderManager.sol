@@ -133,8 +133,14 @@ contract LenderManager is ILenderManager {
     }
 
     function deployMockMinerActor() public {
-        MinerMockAPI c = new MinerMockAPI(abi.encode(msg.sender));
-        emit MinerMockAPIDeployed(address(c), msg.sender);
+        
+        MinerMockAPI mock = new MinerMockAPI{
+            salt: bytes32(abi.encodePacked(uint40(block.timestamp)))
+        }(
+            abi.encode(msg.sender));
+            
+        ownerToMinerActor[msg.sender] = address(mock);
+        emit MinerMockAPIDeployed(address(mock), msg.sender);
     }
 
     function checkReputation(address minerActorAddress) public {
