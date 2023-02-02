@@ -22,7 +22,7 @@ contract LenderManager is ILenderManager {
     mapping(address => uint256) public reputationResponse;
     mapping(address => address) public ownerToMinerActor;
     uint256[] public loanKeys;
-    uint256 public currentId;
+    uint256 public currentId = 0;
     address public oracle;
     uint256 constant MINER_REPUTATION_DEFAULT = 0;
     uint256 constant MINER_REPUTATION_BAD = 1;
@@ -90,7 +90,6 @@ contract LenderManager is ILenderManager {
         }
         if (!isControllingAddress(minerActorAddress))
             revert No_Borrower_Permissions();
-
         (uint256 rate, uint256 amountToRepay) = calculateInterest(
             amount,
             positions[loanKey].interestRate
@@ -201,5 +200,9 @@ contract LenderManager is ILenderManager {
 
     function incrementId() private returns (uint256) {
         return currentId += 1;
+    }
+
+    function getLoanKeysLength() public view returns (uint256) {
+        return loanKeys.length;
     }
 }
