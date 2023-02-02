@@ -15,11 +15,28 @@ async function callRpc(method, params) {
 
 async function main(address) {
   try {
+    const [owner, otherAccount, oracleAccount] = await ethers.getSigners();
     const LENDER_MANAGER_ADDRESS = "0x469f613A055E4b763BAfA904CeC7C74984C79B4b";
 
     var priorityFee = await callRpc("eth_maxPriorityFeePerGas");
     const LenderManager = await ethers.getContractFactory("LenderManager");
     const lenderManager = LenderManager.attach(LENDER_MANAGER_ADDRESS);
+    priorityFee = await callRpc("eth_maxPriorityFeePerGas");
+    let tx = await lenderManager.connect(otherAccount).deployMockMinerActor({
+      maxPriorityFeePerGas: priorityFee.result,
+    });
+    await tx.wait();
+    priorityFee = await callRpc("eth_maxPriorityFeePerGas");
+    const MINER_ADDRESS = await lenderManager.ownerToMinerActor(
+      otherAccount.address,
+      {
+        maxPriorityFeePerGas: priorityFee.result,
+      }
+    );
+    await lenderManager.checkReputation(MINER_ADDRESS, {
+      maxPriorityFeePerGas: priorityFee.result,
+    });
+
     lenderManager.on("CheckReputation", async function (id, address) {
       let tx = await lenderManager.receiveReputationScore(id, 2, {
         gasLimit: 1000000000,
