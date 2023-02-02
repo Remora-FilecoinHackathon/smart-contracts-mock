@@ -22,25 +22,21 @@ describe("Escrow Contract", function () {
   }
 
   async function deployEscrowFixture() {
-    const ORACLE_ADDRESS = "0xbd6E4e826D26A8C984C1baF057D6E62cC245645D";
-
     var priorityFee = await callRpc("eth_maxPriorityFeePerGas");
 
     // Contracts are deployed using the first signer/account by default
-    const [owner, otherAccount] = await ethers.getSigners();
-
+    const [owner, otherAccount, oracleAccount] = await ethers.getSigners();
+    const ORACLE_ADDRESS = oracleAccount.address;
     const LenderManager = await ethers.getContractFactory("LenderManager");
     const lenderManager = await LenderManager.deploy(ORACLE_ADDRESS, {
       maxPriorityFeePerGas: priorityFee.result,
     });
-    const MinerMockAPI = await ethers.getContractFactory("MinerMockAPI");
-    priorityFee = await callRpc("eth_maxPriorityFeePerGas");
-    const minerMockAPI = await MinerMockAPI.deploy(otherAccount.address, {
-      maxPriorityFeePerGas: priorityFee.result,
-    });
+
     await lenderManager.deployed();
-    await minerMockAPI.deployed();
-    const MINER_ADDRESS = minerMockAPI.address;
+    await lenderManager.connect(otherAccount).deployMockMinerActor();
+    const MINER_ADDRESS = await lenderManager.ownerToMinerActor(
+      otherAccount.address
+    );
 
     priorityFee = await callRpc("eth_maxPriorityFeePerGas");
     let tx = await lenderManager.createLendingPosition(unlockTime, 10, {
@@ -50,7 +46,12 @@ describe("Escrow Contract", function () {
     await tx.wait();
 
     var loanKey = await lenderManager.loanKeys(0);
+    const id = await lenderManager.currentId();
+    await expect(lenderManager.checkReputation(MINER_ADDRESS))
+      .to.emit(lenderManager, "CheckReputation")
+      .withArgs(id, MINER_ADDRESS.toString());
 
+    await lenderManager.connect(oracleAccount).receiveReputationScore(id, 2);
     priorityFee = await callRpc("eth_maxPriorityFeePerGas");
     await lenderManager
       .connect(otherAccount)
@@ -126,10 +127,10 @@ describe("Escrow Contract", function () {
     });
 
     it("Test start loan", async function () {
-      const { lenderManager, escrowContract } = await loadFixture(
+      const { lenderManager, escrowContract, otherAccount } = await loadFixture(
         deployEscrowFixture
       );
-      await escrowContract.startLoan();
+      await escrowContract.connect(otherAccount).startLoan();
     });
   });
 
@@ -168,16 +169,18 @@ describe("Escrow Contract", function () {
   describe("Transfer from miner", function () {});
 
   describe("Repay", function () {
-    it("Should fail if repaying non-existant loan", async function () {
+    it("Should fail if repaying non-started loan", async function () {
       const { escrowContract } = await loadFixture(deployEscrowFixture);
 
       var nextWithdraw = await escrowContract.nextWithdraw();
-      console.log(nextWithdraw);
-
-      await escrowContract.repay();
+      // console.log(nextWithdraw);
+      await expect(escrowContract.repay()).to.be.revertedWithCustomError(
+        escrowContract,
+        "Loan_Not_Started"
+      );
 
       nextWithdraw = await escrowContract.nextWithdraw();
-      console.log(nextWithdraw);
+      // console.log(nextWithdraw);
     });
   });
 
@@ -194,9 +197,11 @@ describe("Escrow Contract", function () {
     });
 
     it("Should fail if loan is already started", async function () {
-      const { escrowContract } = await loadFixture(deployEscrowFixture);
+      const { escrowContract, otherAccount } = await loadFixture(
+        deployEscrowFixture
+      );
 
-      await escrowContract.startLoan();
+      await escrowContract.connect(otherAccount).startLoan();
 
       // Should fail when borrower calls
       await expect(

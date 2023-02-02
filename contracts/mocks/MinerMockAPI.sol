@@ -23,6 +23,8 @@ pragma solidity ^0.8.17;
 
 import "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 
+// import "hardhat/console.sol";
+
 /// @title This contract is a proxy to a built-in Miner actor. Calling one of its methods will result in a cross-actor call being performed. However, in this mock library, no actual call is performed.
 /// @author Zondax AG
 /// @dev Methods prefixed with mock_ will not be available in the real library. These methods are merely used to set mock state. Note that this interface will likely break in the future as we align it
@@ -43,9 +45,13 @@ contract MinerMockAPI {
         uint256 bitlen;
     }
 
+    event Received(address, uint256);
+
     /// @notice (Mock method) Sets the owner of a Miner on contract deployment, which will be returned via get_owner().
-    constructor(bytes memory _owner) {
-        owner = _owner;
+    constructor(address _owner) {
+        owner = addressToBytes(_owner);
+        // console.log("AAAA");
+        // console.log(string(owner));
 
         sectorSizesBytes[CommonTypes.SectorSize._2KiB] = 2 << 10;
         sectorSizesBytes[CommonTypes.SectorSize._8MiB] = 8 << 20;
@@ -176,8 +182,28 @@ contract MinerMockAPI {
     }
 
     function withdrawBalance() public {
-        require(msg.sender == abi.decode(owner, (address)));
+        require(msg.sender == bytesToAddress(owner));
         (bool sent, ) = msg.sender.call{value: address(this).balance}("");
         require(sent);
+    }
+
+    function bytesToAddress(bytes memory bys)
+        public
+        pure
+        returns (address addr)
+    {
+        addr = address(uint160(bytes20(bys)));
+    }
+
+    function addressToBytes(address addr)
+        public
+        pure
+        returns (bytes memory bys)
+    {
+        bys = abi.encodePacked(addr);
+    }
+
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
     }
 }

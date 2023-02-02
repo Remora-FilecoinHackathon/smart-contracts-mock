@@ -5,7 +5,7 @@ import { ethers } from "hardhat";
 
 import { LenderManager } from "../typechain-types/escrow";
 
-describe.only("Lender Manager Contract", function () {
+describe("Lender Manager Contract", function () {
   const ENDPOINT_ADDRESS = "https://api.hyperspace.node.glif.io/rpc/v1";
 
   const amount = ethers.utils.parseEther("0.002");
@@ -32,14 +32,13 @@ describe.only("Lender Manager Contract", function () {
     const lenderManager = await LenderManager.deploy(ORACLE_ADDRESS, {
       maxPriorityFeePerGas: priorityFee.result,
     });
-    const MinerMockAPI = await ethers.getContractFactory("MinerMockAPI");
-    priorityFee = await callRpc("eth_maxPriorityFeePerGas");
-    const minerMockAPI = await MinerMockAPI.deploy(otherAccount.address, {
-      maxPriorityFeePerGas: priorityFee.result,
-    });
+
     await lenderManager.deployed();
-    await minerMockAPI.deployed();
-    const MINER_ADDRESS = minerMockAPI.address;
+
+    await lenderManager.connect(otherAccount).deployMockMinerActor();
+    const MINER_ADDRESS = await lenderManager.ownerToMinerActor(
+      otherAccount.address
+    );
 
     return {
       lenderManager,
@@ -282,15 +281,12 @@ describe.only("Lender Manager Contract", function () {
         .to.emit(lenderManager, "CheckReputation")
         .withArgs(id, MINER_ADDRESS.toString());
 
-      //   console.log(MINER_ADDRESS);
-
       await lenderManager.connect(oracleAccount).receiveReputationScore(id, 2);
 
       await lenderManager
         .connect(otherAccount)
         .createBorrow(key, ethers.utils.parseEther("0.001"), MINER_ADDRESS);
 
-      // check params updated
       let lenderPosition = await lenderManager.positions(key);
       expect(lenderPosition.availableAmount).to.equal(
         ethers.utils.parseEther("0.001")

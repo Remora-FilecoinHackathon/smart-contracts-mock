@@ -12,7 +12,7 @@ import {BigIntCBOR} from "@zondax/filecoin-solidity/contracts/v0.8/cbor/BigIntCb
 contract Escrow is IEscrow {
     address public lender;
     address public borrower;
-    address public minerActor;
+    address payable public minerActor;
     uint256 public loanAmount;
     uint256 public rateAmount;
     uint256 public end;
@@ -26,7 +26,7 @@ contract Escrow is IEscrow {
     constructor(
         address _lender,
         address _borrower,
-        address _minerActor,
+        address payable _minerActor,
         uint256 _loanAmount,
         uint256 _rateAmount,
         uint256 _withdrawInterval,
@@ -61,15 +61,18 @@ contract Escrow is IEscrow {
         MinerTypes.GetOwnerReturn memory getOwnerReturnValue = MinerMockAPI(
             minerActor
         ).getOwner();
-        address checkOwner = abi.decode(getOwnerReturnValue.owner, (address));
+        // console.log("BBBB");
+        // console.log(string(getOwnerReturnValue.owner));
+        address checkOwner = MinerMockAPI(minerActor).bytesToAddress(
+            getOwnerReturnValue.owner
+        );
         if (checkOwner != address(this)) revert Wrong_Owner();
         // check on Beneficiary
         MinerTypes.GetBeneficiaryReturn
             memory getBeneficiaryReturnValue = MinerMockAPI(minerActor)
                 .getBeneficiary();
-        address checkBeneficiary = abi.decode(
-            getBeneficiaryReturnValue.active.beneficiary,
-            (address)
+        address checkBeneficiary = MinerMockAPI(minerActor).bytesToAddress(
+            getBeneficiaryReturnValue.active.beneficiary
         );
         if (checkBeneficiary != address(this)) revert Wrong_Beneficiary();
 
@@ -79,9 +82,9 @@ contract Escrow is IEscrow {
 
     function transferToMinerActor(uint256 amount) public {
         if (msg.sender != borrower) revert Not_The_Borrower(borrower);
-        if (address(this).balance <= amount)
+        if (address(this).balance < amount)
             revert Not_Enough_Balance(address(this).balance);
-        submit(minerActor, amount, "");
+        submit(minerActor, amount);
     }
 
     function transferFromMinerActor(
@@ -107,7 +110,7 @@ contract Escrow is IEscrow {
 
         if (address(this).balance >= rateAmount) {
             // transfer $fil to lender
-            submit(lender, rateAmount, "");
+            submit(lender, rateAmount);
             loanPaidAmount += rateAmount;
             emit PaidRate(block.timestamp, rateAmount, loanPaidAmount);
         } else {
@@ -148,18 +151,12 @@ contract Escrow is IEscrow {
         selfdestruct(lenderAddress);
     }
 
-    function submit(
-        address subject,
-        uint256 value,
-        bytes memory inputData
-    ) internal returns (bytes memory returnData) {
-        bool result;
-        (result, returnData) = subject.call{value: value}(inputData);
-        if (!result) {
-            assembly {
-                revert(add(returnData, 0x20), mload(returnData))
-            }
-        }
+    function submit(address subject, uint256 value)
+        internal
+        returns (bytes memory returnData)
+    {
+        (bool sent, ) = subject.call{value: value}("");
+        require(sent, "failed to send FIL");
     }
 
     receive() external payable {

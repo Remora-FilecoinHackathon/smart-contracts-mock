@@ -76,7 +76,7 @@ contract LenderManager is ILenderManager {
     function createBorrow(
         uint256 loanKey,
         uint256 amount,
-        address minerActorAddress
+        address payable minerActorAddress
     ) public {
         if (positions[loanKey].lender == address(0)) revert Empty_Lender();
         if (msg.sender == positions[loanKey].lender)
@@ -133,12 +133,10 @@ contract LenderManager is ILenderManager {
     }
 
     function deployMockMinerActor() public {
-        
         MinerMockAPI mock = new MinerMockAPI{
             salt: bytes32(abi.encodePacked(uint40(block.timestamp)))
-        }(
-            abi.encode(msg.sender));
-            
+        }(msg.sender);
+
         ownerToMinerActor[msg.sender] = address(mock);
         emit MinerMockAPIDeployed(address(mock), msg.sender);
     }
@@ -162,12 +160,12 @@ contract LenderManager is ILenderManager {
         reputationResponse[miner] = response;
     }
 
-    function isControllingAddress(address minerActorAddress)
+    function isControllingAddress(address payable minerActorAddress)
         public
         returns (bool)
     {
         MinerTypes.IsControllingAddressParam memory params = MinerTypes
-            .IsControllingAddressParam(abi.encode(msg.sender));
+            .IsControllingAddressParam(abi.encodePacked(msg.sender));
         MinerTypes.IsControllingAddressReturn memory returnValue = MinerMockAPI(
             minerActorAddress
         ).isControllingAddress(params);
