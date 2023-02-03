@@ -33,6 +33,8 @@ interface ILenderManager {
 
     event CheckReputation(uint256 requestId, address minerActor);
 
+    event ReputationReceived(uint256 requestId, uint256 response);
+
     event MinerMockAPIDeployed(address contractAddress, address owner);
 
     struct BorrowerOrders {

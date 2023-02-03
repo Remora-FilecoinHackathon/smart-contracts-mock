@@ -1,5 +1,8 @@
 const axios = require("axios");
-const ethers = require("hardhat").ethers;
+const ethers = require("ethers");
+const fs = require('fs');
+//const LendingManagerABI = require('./LenderManager.json');
+const LendingManagerABI = require('./LenderManager.json');
 
 const ENDPOINT_ADDRESS = "https://api.hyperspace.node.glif.io/rpc/v1";
 
@@ -13,27 +16,40 @@ async function callRpc(method, params) {
   return res.data;
 }
 
+// async function getData(apiUrl, params) {
+//   try {
+//       const response = await axios.get(apiUrl + params);
+//       return response.data['miners'];
+//   } catch (error) {
+//       return error.message;
+//   }
+// }
+
+// async function determineIfMinerIsReputable(jsonData) {
+//   var minerIsReputable = false;
+//   var minerReputation = jsonData[0].score;
+//   var minerReachable = jsonData[0].reachability;
+
+//   if (minerReputation > 95 && minerReachable === 'reachable') {
+//       minerIsReputable = true;
+//       return minerIsReputable;
+//   }
+//   else {
+//       return minerIsReputable;
+//   }
+// }
+
 async function main(address) {
   try {
-    const [owner, otherAccount, oracleAccount] = await ethers.getSigners();
-    const LENDER_MANAGER_ADDRESS = "0x469f613A055E4b763BAfA904CeC7C74984C79B4b";
-
-    var priorityFee = await callRpc("eth_maxPriorityFeePerGas");
-    const LenderManager = await ethers.getContractFactory("LenderManager");
+    const LENDER_MANAGER_ADDRESS = "0x73CF998AF5dF38c849A58fc3d40142e6574c27AC";
+    const PRIVATE_KEY = process.env.PRIVATE_KEY;
+    const WALLET = new ethers.Wallet(PRIVATE_KEY);
+    const PROVIDER = new ethers.providers.JsonRpcProvider(ENDPOINT_ADDRESS);
+    const SIGNER = WALLET.connect(PROVIDER);
+    const LenderManager = new ethers.Contract(LENDER_MANAGER_ADDRESS, LendingManagerABI, SIGNER);
     const lenderManager = LenderManager.attach(LENDER_MANAGER_ADDRESS);
-    priorityFee = await callRpc("eth_maxPriorityFeePerGas");
-    let tx = await lenderManager.connect(otherAccount).deployMockMinerActor({
-      maxPriorityFeePerGas: priorityFee.result,
-    });
-    await tx.wait();
-    priorityFee = await callRpc("eth_maxPriorityFeePerGas");
-    const MINER_ADDRESS = await lenderManager.ownerToMinerActor(
-      otherAccount.address,
-      {
-        maxPriorityFeePerGas: priorityFee.result,
-      }
-    );
-    await lenderManager.checkReputation(MINER_ADDRESS, {
+    var priorityFee = await callRpc("eth_maxPriorityFeePerGas");
+    await lenderManager.checkReputation(address, {
       maxPriorityFeePerGas: priorityFee.result,
     });
 
@@ -50,4 +66,4 @@ async function main(address) {
 }
 
 // In Lambda, this address will be passed via the event listener
-main("f01662887");
+main("0x73CF998AF5dF38c849A58fc3d40142e6574c27AC");
