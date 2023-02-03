@@ -157,6 +157,7 @@ contract LenderManager is ILenderManager {
         ) revert Miner_Reputation_Value();
         address miner = reputationRequest[requestId];
         reputationResponse[miner] = response;
+        emit ReputationReceived(requestId, response);
     }
 
     function isControllingAddress(address payable minerActorAddress)
