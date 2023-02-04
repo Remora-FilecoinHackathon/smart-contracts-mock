@@ -38,20 +38,20 @@ async function main() {
   await lenderManager.deployed();
   console.log(`Deployed to ${lenderManager.address}`);
 
-  priorityFee = await callRpc("eth_maxPriorityFeePerGas");
-  let tx = await lenderManager.connect(otherAccount).deployMockMinerActor({
-    maxPriorityFeePerGas: priorityFee.result,
-  });
-  await tx.wait();
+  // priorityFee = await callRpc("eth_maxPriorityFeePerGas");
+  // let tx = await lenderManager.connect(otherAccount).deployMockMinerActor({
+  //   maxPriorityFeePerGas: priorityFee.result,
+  // });
+  // await tx.wait();
 
-  priorityFee = await callRpc("eth_maxPriorityFeePerGas");
-  const MINER_ADDRESS = await lenderManager.ownerToMinerActor(
-    otherAccount.address,
-    {
-      maxPriorityFeePerGas: priorityFee.result,
-    }
-  );
-  console.log(`MINER_ADDRESS is ${MINER_ADDRESS}`);
+  // priorityFee = await callRpc("eth_maxPriorityFeePerGas");
+  // const MINER_ADDRESS = await lenderManager.ownerToMinerActor(
+  //   otherAccount.address,
+  //   {
+  //     maxPriorityFeePerGas: priorityFee.result,
+  //   }
+  // );
+  // console.log(`MINER_ADDRESS is ${MINER_ADDRESS}`);
 }
 
 main().catch((error) => {
