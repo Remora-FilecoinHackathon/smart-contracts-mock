@@ -14,15 +14,19 @@ async function callRpc(method: string, params?: any) {
   return res.data;
 }
 
-async function deploy() {}
+async function sendMessage(id, response) {
+  const sqs = new SQS({ region: 'us-west-2' });
+  const queueUrl = "https://sqs.us-west-2.amazonaws.com/130922966848/fil-reputation";
+  const params = {
+    MessageBody: JSON.stringify({ id: id, address: response }),
+    QueueUrl: queueUrl,
+  };
+  const result = await sqs.sendMessage(params).promise();
+  console.log(result);
+}
 
 async function main() {
-  const MINER_ADDRESS =
-    "t3wj7cikpzptshfuwqleehoytar2wcvom42q6io7lopbl2yp2kb2yh3ymxovsd5ccrgm36ckeibzjl3s27pzuq";
-  const ORACLE_ADDRESS = "0xbd6E4e826D26A8C984C1baF057D6E62cC245645D";
   const LENDER_MANAGER_ADDRESS = "0xbCD7942E4016584b8a285BC2d8914c3B3d857f19";
-  
-  var priorityFee = await callRpc("eth_maxPriorityFeePerGas");
   const LenderManager = await ethers.getContractFactory("LenderManager");
   const lenderManager = LenderManager.attach(LENDER_MANAGER_ADDRESS);
   const processedIds = new Set();
@@ -43,42 +47,19 @@ async function main() {
       processedIds.add(id);
       console.log("PROCESSED IDS SET");
       console.log(processedIds);
-    });
 
-
-    // LEAVING OFF HERE
-    // Don't know for sure that the timeout is the best way to go
-    // 
-    setTimeout(async function() {
-      // This now needs to remove an id from processedIds once the message is sent 
-      const sqs = new SQS({ region: 'us-west-2' });
-      const queueUrl = "https://sqs.us-west-2.amazonaws.com/130922966848/fil-reputation";
-      const params = {
-        MessageBody: JSON.stringify({ id: parseInt(id._hex, 16), response: parseInt(response._hex, 16) }),
-        QueueUrl: queueUrl,
-      };
-      const result = await sqs.sendMessage(params).promise();
-      console.log(result);
-    }, 5000);
-
-
-    
-
-  // lenderManager.on(
-  //   "ReputationReceived",
-  //   async function (id, response, miner) {
-  //     console.log("**** EVENT RECEIVED ****");
-
-  //     const sqs = new SQS({ region: 'us-west-2' });
-  //     const queueUrl = "https://sqs.us-west-2.amazonaws.com/130922966848/fil-reputation";
-  //     const params = {
-  //       MessageBody: JSON.stringify({ id: parseInt(id._hex, 16), response: parseInt(response._hex, 16), miner: miner }),
-  //       QueueUrl: queueUrl,
-  //     };
-  //     const result = await sqs.sendMessage(params).promise();
-  //     console.log(result);
-  //   }
-  // );
+      setTimeout(function() {
+        for (const currentId of processedIds) {
+          console.log("CURRENT ID");
+          console.log(currentId);
+          console.log(response);
+          // Not sure the line below is good enough on response, might not match in prod
+          sendMessage(currentId, response);
+          processedIds.delete(currentId);
+        }
+      }, 5000);
+    }
+  );
 }
 
 main().catch((error) => {
