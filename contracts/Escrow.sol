@@ -9,20 +9,66 @@ import {MinerMockAPI} from "./mocks/MinerMockAPI.sol";
 import {MinerTypes} from "@zondax/filecoin-solidity/contracts/v0.8/types/MinerTypes.sol";
 import {BigIntCBOR} from "@zondax/filecoin-solidity/contracts/v0.8/cbor/BigIntCbor.sol";
 
+/**
+ * @title Escrow Contract implements methods for escrow
+ * @notice Implements the functions for the given pair of lender and borrower transactions
+ * @author Remora
+ **/
+
 contract Escrow is IEscrow {
+
+    //-------------------------------- Glabal variables start --------------------------------//
+
+    // Address of the lender
     address public lender;
+
+    // Address of the borrower
     address public borrower;
+
+    // Address of the miner actor
     address payable public minerActor;
+
+    // Amount of loan borrowed (including the interest)
     uint256 public loanAmount;
+
+    // Amount payable monthly 
     uint256 public rateAmount;
+
+    // End timestamp of the loan
     uint256 public end;
+
+    // Start timestamp of the loan
     bool public started;
+
+    // Boolen implying if loan can be terminated
     bool public canTerminate;
+
+    // Last withdrawal timestamp
     uint256 public lastWithdraw;
+
+    // time interval between consecutive withdrawals
     uint256 public withdrawInterval;
+
+    // Amount of the loan paid
     uint256 public loanPaidAmount;
+
+    // Stores the loan parameters
     MinerTypes.WithdrawBalanceParams closeLoanParam;
 
+    //-------------------------------- Glabal variables end --------------------------------//
+
+    //-------------------------------- Initialize code start --------------------------------//
+
+    /**
+     * @dev used to initialize the variables in contract
+     * @param _lender address of the lender
+     * @param _borrower address of the borrower
+     * @param _minerActor address of the miner Actor
+     * @param _loanAmount  the loan amount requested (including the interest)
+     * @param _rateAmount the monthly rate payable by the borrower
+     * @param _withdrawInterval time interval between consecutive withdrawals
+     * @param _end end timestamp of the loan
+     */
     constructor(
         address _lender,
         address _borrower,
@@ -44,6 +90,11 @@ contract Escrow is IEscrow {
         );
     }
 
+    //-------------------------------- Initialize code end --------------------------------//
+
+    /**
+     * @dev Used to start the loan and initialize the miner and beneficiary addresses
+     */
     function startLoan() external {
         if (started) revert Loan_Already_Started();
         // set this contract as the new Owner of the Miner Actor
@@ -80,6 +131,10 @@ contract Escrow is IEscrow {
         transferToMinerActor(address(this).balance);
     }
 
+    /**
+    * @dev Used to transfer amount from the borrower to the miner actor
+    * @param amount the amount to transfer
+    */
     function transferToMinerActor(uint256 amount) public {
         if (msg.sender != borrower) revert Not_The_Borrower(borrower);
         if (address(this).balance < amount)
@@ -87,6 +142,10 @@ contract Escrow is IEscrow {
         submit(minerActor, amount);
     }
 
+    /**
+    * @dev Used to transfer amount from the miner actor to the escrow
+    * @param balanceParams balance of the miner actor
+    */
     function transferFromMinerActor(
         MinerTypes.WithdrawBalanceParams memory balanceParams
     ) external {
@@ -96,10 +155,17 @@ contract Escrow is IEscrow {
         return MinerMockAPI(minerActor).withdrawBalance();
     }
 
+    /**
+    * @dev Used to calculate the next withdrawal time stamp
+    * @return lastWithdraw timestamp for the next allowed withdraw
+    */
     function nextWithdraw() public view returns (uint256) {
         return lastWithdraw == 0 ? 0 : (lastWithdraw + withdrawInterval);
     }
 
+    /**
+    * @dev Used to repay the loan to the lender
+    */
     function repay() external {
         if (!started) revert Loan_Not_Started();
 
@@ -120,6 +186,9 @@ contract Escrow is IEscrow {
         lastWithdraw = block.timestamp;
     }
 
+    /**
+    * @dev Used to withdraw funds from escrow before the loan starts
+    */
     function withdrawBeforLoanStarts() external {
         if (msg.sender != lender) revert Not_The_Lender(lender);
         if (started) revert Already_Started();
@@ -130,6 +199,9 @@ contract Escrow is IEscrow {
         selfdestruct(lenderAddress);
     }
 
+    /**
+    * @dev Used to close the loan and send funds to the lender
+    */
     function closeLoan() external {
         if (!canTerminate || end > block.timestamp)
             revert Loan_Not_Expired(end);
@@ -151,6 +223,12 @@ contract Escrow is IEscrow {
         selfdestruct(lenderAddress);
     }
 
+    /**
+    * @dev Used to transfer funds 
+    * @param subject address to send funds to
+    * @param value amount of funds to send
+    * @return returnData the result of the transfer
+    */
     function submit(address subject, uint256 value)
         internal
         returns (bytes memory returnData)
