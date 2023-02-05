@@ -92,24 +92,6 @@ interface ILenderManager {
     //-------------------------------- Structs start --------------------------------//
 
     /**
-    * @dev Used to store details about the loans accepted by the borrower
-    * @param borrower address of the borrower 
-    * @param loanAmount the amount of loan accepted by the borrower
-    * @param amountToRepay total amount to repay for the loan including the interest
-    * @param startBlock the start timestamp of the loan
-    * @param amountToPayEveryBlock the periodic amount to be repaid for the loan
-    * @param escrow the address of the escrow contract
-    */
-    struct BorrowerOrders {
-        address borrower;
-        uint256 loanAmount;
-        uint256 amountToRepay;
-        uint256 startBlock;
-        uint256 amountToPayEveryBlock;
-        address escrow;
-    }
-
-    /**
     * @dev Emitted when a new lending position is added to the market place
     * @param lender the address of the lender
     * @param availableAmount the total amount availabel for the loan
