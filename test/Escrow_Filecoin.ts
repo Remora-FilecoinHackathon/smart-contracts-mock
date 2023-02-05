@@ -2,7 +2,7 @@ import { expect } from "chai";
 import axios from "axios";
 import { ethers } from "hardhat";
 
-describe.only("Escrow Contract", function () {
+describe("Escrow Contract", function () {
   const ENDPOINT_ADDRESS = "https://api.hyperspace.node.glif.io/rpc/v1";
 
   const amount = ethers.utils.parseEther("0.002");

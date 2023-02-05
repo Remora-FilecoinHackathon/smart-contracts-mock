@@ -292,11 +292,17 @@ describe("Lender Manager Contract", function () {
         ethers.utils.parseEther("0.001")
       );
 
-      let lendingOrders = await lenderManager.ordersForLending(key, 0);
-      expect(lendingOrders.borrower).to.equal(otherAccount.address);
+      let escrowAddress = await lenderManager.borrowerPositions(
+        otherAccount.address,
+        0
+      );
+      const EscrowFactory = await ethers.getContractFactory("Escrow");
+      const escrowContract = EscrowFactory.attach(escrowAddress);
 
-      expect(lendingOrders.loanAmount).to.equal(
-        ethers.utils.parseEther("0.001")
+      expect(await escrowContract.borrower()).to.equal(otherAccount.address);
+
+      expect(await escrowContract.loanAmount()).to.equal(
+        ethers.utils.parseEther("0.001001")
       );
     });
   });

@@ -17,7 +17,6 @@ import "@zondax/filecoin-solidity/contracts/v0.8/utils/Misc.sol";
  **/
 
 contract LenderManager is ILenderManager {
-
     //-------------------------------- LenderManager state variables start --------------------------------//
 
     // Mapping to store lending positions
@@ -81,9 +80,9 @@ contract LenderManager is ILenderManager {
     //-------------------------------- Initialize code start --------------------------------//
 
     /**
-    * @dev Used to initialize variables in the contract
-    * @param _oracle the address of the oracle
-    */
+     * @dev Used to initialize variables in the contract
+     * @param _oracle the address of the oracle
+     */
     constructor(address _oracle) {
         oracle = _oracle;
     }
@@ -91,10 +90,10 @@ contract LenderManager is ILenderManager {
     //-------------------------------- Initialize code end --------------------------------//
 
     /**
-    * @dev Used to create lending deals
-    * @param duration the duration of the loan deal
-    * @param loanInterestRate the ineterst rate for the loan deal
-    */
+     * @dev Used to create lending deals
+     * @param duration the duration of the loan deal
+     * @param loanInterestRate the ineterst rate for the loan deal
+     */
     function createLendingPosition(uint256 duration, uint256 loanInterestRate)
         public
         payable
@@ -130,11 +129,11 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used by the borrower to accept lending deals
-    * @param loanKey the identifier of the loan
-    * @param amount the amount to loan from the lender
-    * @param minerActorAddress the address of the miner 
-    */
+     * @dev Used by the borrower to accept lending deals
+     * @param loanKey the identifier of the loan
+     * @param amount the amount to loan from the lender
+     * @param minerActorAddress the address of the miner
+     */
     function createBorrow(
         uint256 loanKey,
         uint256 amount,
@@ -172,7 +171,7 @@ contract LenderManager is ILenderManager {
         positions[loanKey].availableAmount -= amount;
         escrowContracts[loanKey].push(payable(address(escrow)));
         borrowerPositions[msg.sender].push(payable(address(escrow)));
-        
+
         emit BorrowOrder(
             address(escrow),
             amount,
@@ -186,8 +185,8 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used to deploy the mock miner
-    */
+     * @dev Used to deploy the mock miner
+     */
     function deployMockMinerActor() public {
         MinerMockAPI mock = new MinerMockAPI{
             salt: bytes32(abi.encodePacked(uint40(block.timestamp)))
@@ -198,9 +197,9 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used to check reputation of the miner address
-    * @param minerActorAddress address of the miner
-    */
+     * @dev Used to check reputation of the miner address
+     * @param minerActorAddress address of the miner
+     */
     function checkReputation(address minerActorAddress) public {
         uint256 id = currentId;
         reputationRequest[id] = minerActorAddress;
@@ -209,10 +208,10 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used to receive the reputation score of a miner
-    * @param requestId identifier for the reputation requestof the miner
-    * @param response the reputation score
-    */
+     * @dev Used to receive the reputation score of a miner
+     * @param requestId identifier for the reputation requestof the miner
+     * @param response the reputation score
+     */
     function receiveReputationScore(uint256 requestId, uint256 response)
         external
         onlyOracle
@@ -227,12 +226,13 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used to check if miner is the controlling address
-    * @param minerActorAddress address of the miner
-    * @return is_controlling boolen implying if miner is controlling address 
-    */
+     * @dev Used to check if miner is the controlling address
+     * @param minerActorAddress address of the miner
+     * @return is_controlling boolen implying if miner is controlling address
+     */
     function isControllingAddress(address payable minerActorAddress)
         public
+        view
         returns (bool)
     {
         MinerTypes.IsControllingAddressParam memory params = MinerTypes
@@ -244,12 +244,12 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used to calculate the interest of the loan
-    * @param amount the loan amount to calculate interest on
-    * @param bps the interest rate of the loan, if 10% then bps = 10 * 100
-    * @return rateAmount the monthly payable amount
-    * @return loanAmount the total loan amount, including the interest
-    */
+     * @dev Used to calculate the interest of the loan
+     * @param amount the loan amount to calculate interest on
+     * @param bps the interest rate of the loan, if 10% then bps = 10 * 100
+     * @return rateAmount the monthly payable amount
+     * @return loanAmount the total loan amount, including the interest
+     */
     function calculateInterest(uint256 amount, uint256 bps)
         public
         pure
@@ -269,11 +269,11 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used to calculate the periodical interest payable
-    * @param amount the loan amount to calculate interest on
-    * @param bps the interest rate of the loan, if 10% then bps = 10 * 100
-    * @return rateAmount the monthly payable amount
-    */
+     * @dev Used to calculate the periodical interest payable
+     * @param amount the loan amount to calculate interest on
+     * @param bps the interest rate of the loan, if 10% then bps = 10 * 100
+     * @return rateAmount the monthly payable amount
+     */
     function calculatePeriodicaInterest(uint256 amount, uint256 bps)
         private
         pure
@@ -284,17 +284,17 @@ contract LenderManager is ILenderManager {
     }
 
     /**
-    * @dev Used to increment he current id counter
-    * @return currentId updated value of the current id
-    */
+     * @dev Used to increment he current id counter
+     * @return currentId updated value of the current id
+     */
     function incrementId() private returns (uint256) {
         return currentId += 1;
     }
 
     /**
-    * @dev Used to get the total number of available leanding deals in the market place
-    * @return deals the number of lending deals available
-    */
+     * @dev Used to get the total number of available leanding deals in the market place
+     * @return deals the number of lending deals available
+     */
     function getLoanKeysLength() public view returns (uint256) {
         return loanKeys.length;
     }
