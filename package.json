@@ -8,6 +8,7 @@
     "@glif/filecoin-address": "^2.0.20",
     "@zondax/filecoin-signing-tools": "^2.3.0",
     "@zondax/filecoin-solidity": "*",
+    "aws-sdk": "^2.1309.0",
     "axios": "^1.2.4",
     "dotenv": "^16.0.3",
     "filecoin.js": "*"

@@ -41,8 +41,8 @@ async function callRpc(method, params) {
 
 async function main(address) {
   try {
-    const LENDER_MANAGER_ADDRESS = "0x73CF998AF5dF38c849A58fc3d40142e6574c27AC";
-    const PRIVATE_KEY = process.env.PRIVATE_KEY;
+    const LENDER_MANAGER_ADDRESS = "0xbCD7942E4016584b8a285BC2d8914c3B3d857f19";
+    const PRIVATE_KEY = process.env.PRIVATE_KEY_BORROWER;
     const WALLET = new ethers.Wallet(PRIVATE_KEY);
     const PROVIDER = new ethers.providers.JsonRpcProvider(ENDPOINT_ADDRESS);
     const SIGNER = WALLET.connect(PROVIDER);
@@ -53,13 +53,13 @@ async function main(address) {
       maxPriorityFeePerGas: priorityFee.result,
     });
 
-    lenderManager.on("CheckReputation", async function (id, address) {
-      let tx = await lenderManager.receiveReputationScore(id, 2, {
-        gasLimit: 1000000000,
-        maxPriorityFeePerGas: priorityFee.result,
-      });
-      await tx.wait();
-    });
+    // lenderManager.on("CheckReputation", async function (id, address) {
+    //   let tx = await lenderManager.receiveReputationScore(id, 2, {
+    //     gasLimit: 1000000000,
+    //     maxPriorityFeePerGas: priorityFee.result,
+    //   });
+    //   await tx.wait();
+    // });
   } catch (error) {
     console.log(error);
   }
