@@ -16,7 +16,7 @@ async function callRpc(method: string, params?: any) {
 
 async function sendMessage(id, response) {
   const sqs = new SQS({ region: 'us-west-2' });
-  const queueUrl = "https://sqs.us-west-2.amazonaws.com/130922966848/fil-reputation";
+  const queueUrl = "https://sqs.us-west-2.amazonaws.com/130922966848/remora-events";
   const params = {
     MessageBody: JSON.stringify({ id: id, address: response }),
     QueueUrl: queueUrl,
@@ -26,7 +26,8 @@ async function sendMessage(id, response) {
 }
 
 async function main() {
-  const LENDER_MANAGER_ADDRESS = "0xbCD7942E4016584b8a285BC2d8914c3B3d857f19";
+  // NEW ADDRESS: 0xaE7eD725f5053471DB2Fc7254dBB2766615f7064
+  const LENDER_MANAGER_ADDRESS = "0xaE7eD725f5053471DB2Fc7254dBB2766615f7064";
   const LenderManager = await ethers.getContractFactory("LenderManager");
   const lenderManager = LenderManager.attach(LENDER_MANAGER_ADDRESS);
   const processedIds = new Set();

@@ -41,7 +41,7 @@ async function callRpc(method, params) {
 
 async function main(address) {
   try {
-    const LENDER_MANAGER_ADDRESS = "0xbCD7942E4016584b8a285BC2d8914c3B3d857f19";
+    const LENDER_MANAGER_ADDRESS = "0xaE7eD725f5053471DB2Fc7254dBB2766615f7064";
     const PRIVATE_KEY = process.env.PRIVATE_KEY_BORROWER;
     const WALLET = new ethers.Wallet(PRIVATE_KEY);
     const PROVIDER = new ethers.providers.JsonRpcProvider(ENDPOINT_ADDRESS);
