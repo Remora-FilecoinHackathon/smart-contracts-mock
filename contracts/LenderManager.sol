@@ -23,8 +23,8 @@ contract LenderManager is ILenderManager {
     // Mapping to store lending positions
     mapping(uint256 => LendingPosition) public positions;
 
-    // Mapping to store lending orders accepted by the borrower
-    mapping(uint256 => BorrowerOrders[]) public ordersForLending;
+    // Mapping to store Escrow contracts of a Borrower
+    mapping(address => address[]) public borrowerPositions;
 
     // Mapping to store the addresses of the escrow contracts deployed
     mapping(uint256 => address[]) public escrowContracts;
@@ -171,16 +171,8 @@ contract LenderManager is ILenderManager {
         require(sent, "Failed send to escrow");
         positions[loanKey].availableAmount -= amount;
         escrowContracts[loanKey].push(payable(address(escrow)));
-        ordersForLending[loanKey].push(
-            BorrowerOrders(
-                msg.sender,
-                amount,
-                amountToRepay,
-                block.timestamp,
-                rate,
-                address(escrow)
-            )
-        );
+        borrowerPositions[msg.sender].push(payable(address(escrow)));
+        
         emit BorrowOrder(
             address(escrow),
             amount,
