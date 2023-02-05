@@ -103,6 +103,7 @@ interface ILenderManager {
         uint256 availableAmount;
         uint256 endTimestamp;
         uint256 interestRate;
+        address[] escrowContracts;
     }
 
     //-------------------------------- Structs end --------------------------------//
