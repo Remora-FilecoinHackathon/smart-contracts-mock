@@ -11,3 +11,6 @@ artifacts
 
 .DS_Store
 yarn.lock
+
+# Terraform files
+.terraform*
