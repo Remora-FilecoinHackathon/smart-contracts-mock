@@ -18,6 +18,8 @@ During the hackathon, we encountered multiple issues using the Filecoin Solidity
 ## Smart contract address
 Lender Manager: 0xaE7eD725f5053471DB2Fc7254dBB2766615f7064 (Hyperspace)
 
+## Backend
+The backend built on Lambda is used to implement the Miner reputation control. Specifically, the LenderManager smart contract provides a checkReputation function that takes a Miner Actor address as input and emits the checkReputation(uint256 requestId, uint256 response) event. The backend is listening for the event and does a check of the Miner Actor using the filrep API (https://filrep.io/api). Once checked, the backend calls receiveReputation on the LenderManager smart contract writing the Miner Actor's reputation (Not found, Bad reputation, or Good reputation) on the chain storage.
 
 # Project Setup
 
